@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow user to create their own profile document using their UID as doc ID
+    match /users/{userId} {
+      allow read: if request.auth != null; // Or: if request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update, delete: if request.auth != null && request.auth.uid == userId; // For future profile edits
+    }
+  }
+}

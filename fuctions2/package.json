@@ -1,0 +1,31 @@
+{
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "clean": "rimraf lib",
+    "lint": "eslint .",
+    "build": "npm run clean && tsc",
+    "build:watch": "tsc --watch",
+    "serve": "concurrently \"npm:build:watch\" \"firebase emulators:start --only functions\"",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "firebase-admin": "^13.4.0",
+    "firebase-functions": "^6.4.0",
+    "nodemailer": "^7.0.5"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^6.4.17",
+    "concurrently": "^8.2.2",
+    "rimraf": "^5.0.10",
+    "typescript": "^5.0.0"
+  },
+  "private": true
+}

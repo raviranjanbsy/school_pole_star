@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "1087394897321",
+    "firebase_url": "https://school-mang-ivar-default-rtdb.firebaseio.com",
+    "project_id": "school-mang-ivar",
+    "storage_bucket": "school-mang-ivar.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1087394897321:android:409853738481ef383578b8",
+        "android_client_info": {
+          "package_name": "com.example.school_management"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCqtYuooK754EKjzUp6gFqdPR_DKJpKnMI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

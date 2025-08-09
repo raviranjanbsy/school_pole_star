@@ -1,0 +1,1 @@
+D:\work\flutter\Sample_app\Flutter-School-Management-System-main\flutter\school_management\build\app\intermediates\cxx\RelWithDebInfo\17701w13\obj\arm64-v8a

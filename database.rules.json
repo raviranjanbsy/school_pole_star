@@ -1,0 +1,205 @@
+{
+  "rules": {
+    // Default deny for security - this is good.
+    ".read": "auth != null",
+    ".write": false,
+
+     "users": {
+      // An admin can read all user profiles.
+      ".read": "root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      "$uid": {
+        // Any authenticated user can read a specific user's basic profile.
+        // This is often needed for displaying names, etc.
+        ".read": "auth != null",
+        // A user can only write to their own profile.
+        ".write": "auth.uid === $uid"
+      }
+    },
+
+    "student_profiles": {
+      ".indexOn": "classId",
+      // CORRECT: Allow teachers and admins to read ALL student profiles (for lists).
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'teacher' || root.child('users').child(auth.uid).child('role').val() == 'admin')",
+      "$uid": {
+        // Allow a student to read THEIR OWN profile.
+        // Allow teachers and admins to read THIS SPECIFIC student's profile.
+        ".read": "auth != null && (auth.uid == $uid || root.child('users').child(auth.uid).child('role').val() == 'teacher' || root.child('users').child(auth.uid).child('role').val() == 'admin')",
+        // A student can write to their own profile.
+        // An admin can write to any student profile.
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'teacher' || root.child('users').child(auth.uid).child('role').val() == 'admin')",
+        "rollNumber": {
+          // Validate that the roll number, if it exists, is a positive integer.
+          // It can also be null to indicate it's not set.
+          ".validate": "newData.val() === null || (newData.isNumber() && newData.val() > 0)"
+        }
+      }
+    },
+
+    "teacher_profiles": {
+      // OPTIONAL REFINEMENT: Allow any authenticated user to read ALL teacher profiles.
+      // Change to "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'teacher' || root.child('users').child(auth.uid).child('role').val() == 'admin')"
+      // if only teachers/admins should see the list.
+      ".read": "auth != null", 
+      "$uid": {
+        // Allow a teacher to read their own profile.
+        // Allow admins to read THIS SPECIFIC teacher's profile.
+        ".read": "auth != null && (auth.uid == $uid || root.child('users').child(auth.uid).child('role').val() == 'admin')",
+        // A teacher can write to their own profile.
+        // An admin can write to any teacher profile.
+        ".write": "auth != null && (auth.uid == $uid || root.child('users').child(auth.uid).child('role').val() == 'admin')"
+      }
+    },
+
+    "classes": {
+      // Allow any authenticated user to read class information.
+      ".read": "auth != null",
+      // Only admins can create/update/delete classes.
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() == 'admin'",
+      ".indexOn": "teacherId"
+    },
+
+    "streams": {
+      "$classId": {
+        // Allow any authenticated user to read the stream for a class.
+        ".read": "auth != null",
+        // An admin or the assigned teacher can write to the stream.
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'admin' || (root.child('users').child(auth.uid).child('role').val() == 'teacher' && root.child('classes').child($classId).child('teacherId').val() == auth.uid))",
+        ".indexOn": "timestamp"
+      }
+    },
+
+    "submissions": {
+      "$assignmentId": {
+        // Allow teachers and admins to read all submissions for an assignment.
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'teacher' || root.child('users').child(auth.uid).child('role').val() == 'admin')",
+
+        "$studentUid": {
+          // Allow a student to read their own submission.
+          // Allow a teacher to read it for grading.
+          // Allow an admin to read it.
+          ".read": "auth != null && (auth.uid == $studentUid || root.child('users').child(auth.uid).child('role').val() == 'teacher' || root.child('users').child(auth.uid).child('role').val() == 'admin')",
+          
+          // Allow a student to write (submit).
+          // Allow a teacher to write (grade).
+          // Allow an admin to write.
+          ".write": "auth != null && (auth.uid == $studentUid || root.child('users').child(auth.uid).child('role').val() == 'teacher' || root.child('users').child(auth.uid).child('role').val() == 'admin')"
+        }
+      }
+    },
+
+    "student_attendance": {
+      // Allow teachers and admins to write attendance records.
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'teacher' || root.child('users').child(auth.uid).child('role').val() == 'admin')",
+      // ADD THIS LINE: Allow teachers and admins to read the *list* of attendance records.
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() == 'teacher' || root.child('users').child(auth.uid).child('role').val() == 'admin')",
+      "$studentUid": {
+        // Allow a student to read their own attendance records.
+        // Allow teachers and admins to read any specific student's attendance records.
+        ".read": "auth != null && (auth.uid == $studentUid || root.child('users').child(auth.uid).child('role').val() == 'teacher' || root.child('users').child(auth.uid).child('role').val() == 'admin')"
+      }
+    },
+        // Specific rules for fee_categories
+    "fee_categories": {
+      // Any authenticated user can read the categories.
+      ".read": "auth != null",
+      // Only admins can create, update, or delete fee categories.
+      ".write": "root.child('users').child(auth.uid).child('role').val() == 'admin'"
+    },
+    "fee_structures": {
+      // Allow authenticated users to read fee structures
+      ".read": "auth != null",
+      // Allow only admins to create, update, or delete fee structures
+      ".write": "root.child('users').child(auth.uid).child('role').val() == 'admin'"
+    },
+    "invoices": {
+      ".indexOn": "studentUid",
+      // Admins can read all invoices. Students can query for their own.
+      ".read": "root.child('users').child(auth.uid).child('role').val() == 'admin' || (query.orderByChild == 'studentUid' && query.equalTo == auth.uid)",
+      "$invoiceId": {
+        // An admin can write to any invoice.
+        // A student can write to an invoice only if their UID matches the studentUid on that invoice.
+        // This rule correctly combines admin and user permissions.
+        ".write": "root.child('users').child(auth.uid).child('role').val() == 'admin' || (newData.child('studentUid').exists() && newData.child('studentUid').val() == auth.uid)"
+      }
+    },
+    "payments": {
+      // Admins can read the entire list of payments.
+      ".read": "root.child('users').child(auth.uid).child('role').val() == 'admin'",
+      // Admins can write to payments.
+      ".write": "root.child('users').child(auth.uid).child('role').val() == 'admin'",
+      "$paymentId": {
+        // A student can read a specific payment if it belongs to them (by checking the invoice).
+        ".read": "root.child('users').child(auth.uid).child('role').val() == 'admin' || (data.exists() && root.child('invoices').child(data.child('invoiceId').val()).child('studentUid').val() == auth.uid)"
+      },
+      ".indexOn": "invoiceId"
+    },
+        // Rules for the subject mappings themselves.
+    "subject_mappings": {
+      ".read": "auth != null",
+      "$classId": {
+        ".write": "auth != null",
+        
+     }
+    },
+
+    "exam_schedules": {
+      ".read": "auth != null",
+      ".indexOn": "examDate",
+      "$scheduleId": {
+        ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'teacher'",
+        ".validate": "newData.hasChildren(['className', 'subject', 'examName', 'examDate', 'startTime', 'endTime', 'maxMarks', 'createdAt']) &&
+                      newData.child('className').isString() && newData.child('className').val().length > 0 &&
+                      newData.child('subject').isString() && newData.child('subject').val().length > 0 &&
+                      newData.child('examName').isString() && newData.child('examName').val().length > 0 &&
+                      newData.child('startTime').isString() && newData.child('startTime').val().length > 0 &&
+                      newData.child('endTime').isString() && newData.child('endTime').val().length > 0 &&
+                      newData.child('examDate').isNumber() &&
+                      newData.child('maxMarks').isNumber() && newData.child('maxMarks').val() >= 0 &&
+                      (
+                        (!data.exists() && newData.child('createdAt').val() === now) ||
+                        (data.exists() && newData.child('createdAt').val() === data.child('createdAt').val())
+                      )"
+      }
+    },
+    "syllabuses": {
+      // Any authenticated user (student, teacher, admin) can read the list of syllabuses.
+      ".read": "auth != null",
+
+      // An index is required for the query in `fetchSyllabuses()` which orders by 'createdAt'.
+      // This significantly improves query performance.
+      ".indexOn": "createdAt",
+
+      "$syllabusId": {
+        // Only allow users with the 'admin' or 'teacher' role to write (create, update, delete).
+        // This rule looks up the current user's role in the `/users` node.
+        ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'teacher'",
+
+        // This rule validates the data structure for new and updated syllabuses.
+        // It prevents malformed or incomplete data from being saved.
+        ".validate": "newData.hasChildren(['className', 'subject', 'title', 'description', 'createdAt']) &&
+                      newData.child('className').isString() && newData.child('className').val().length > 0 &&
+                      newData.child('subject').isString() && newData.child('subject').val().length > 0 &&
+                      newData.child('title').isString() && newData.child('title').val().length > 0 &&
+                      newData.child('description').isString() &&
+                      (!newData.hasChild('fileUrl') || newData.child('fileUrl').isString()) &&
+                      (
+                        // On create, `createdAt` must be the server timestamp.
+                        (!data.exists() && newData.child('createdAt').val() === now) ||
+                        // On update, `createdAt` must not be changed.
+                        (data.exists() && newData.child('createdAt').val() === data.child('createdAt').val())
+                      )"
+      }
+    },
+    // The /school_config is read by the Cloud Function, but might be editable by an admin from the client.
+    "school_config": {
+      ".read": "root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin'"
+    },
+    // Counters should only be modified by Cloud Functions (which bypass rules).
+    // No client should be able to read or write them directly.
+    "counters": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}
