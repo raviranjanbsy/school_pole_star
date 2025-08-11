@@ -29,6 +29,21 @@ class StudentClassDashboard extends StatelessWidget {
   }
 }
 
+/// A helper class to hold the data for each class tool card.
+class _ClassTool {
+  final String label;
+  final IconData icon;
+  final MaterialColor color;
+  final VoidCallback onTap;
+
+  const _ClassTool({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+}
+
 /// A reusable widget that displays the grid of tools for a specific class.
 class ClassToolsGrid extends StatelessWidget {
   final String classId;
@@ -36,106 +51,138 @@ class ClassToolsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      padding: const EdgeInsets.all(16.0),
-      crossAxisSpacing: 16.0,
-      mainAxisSpacing: 16.0,
-      children: [
-        _buildClassToolCard(
-          context: context,
-          icon: Icons.campaign,
-          label: 'Announcements',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => GradientContainer(
-                    child: Scaffold(
+    final List<_ClassTool> tools = [
+      _ClassTool(
+        label: 'Announcements',
+        icon: Icons.campaign,
+        color: Colors.blue,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GradientContainer(
+                child: Scaffold(
                   backgroundColor: Colors.transparent,
                   appBar: AppBar(title: const Text('Announcements')),
                   body: AnnouncementsList(classId: classId),
-                )),
+                ),
               ),
-            );
-          },
-        ),
-        _buildClassToolCard(
-          context: context,
-          icon: Icons.assignment,
-          label: 'Assignments',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => GradientContainer(
-                    child: Scaffold(
+            ),
+          );
+        },
+      ),
+      _ClassTool(
+        label: 'Assignments',
+        icon: Icons.assignment,
+        color: Colors.orange,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GradientContainer(
+                child: Scaffold(
                   backgroundColor: Colors.transparent,
                   appBar: AppBar(title: const Text('Assignments')),
                   body: AssignmentsList(classId: classId),
-                )),
+                ),
               ),
-            );
-          },
-        ),
-        _buildClassToolCard(
-          context: context,
-          icon: Icons.calendar_today,
-          label: 'Attendance',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => GradientContainer(
-                    child: Scaffold(
+            ),
+          );
+        },
+      ),
+      _ClassTool(
+        label: 'Attendance',
+        icon: Icons.calendar_today,
+        color: Colors.green,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GradientContainer(
+                child: Scaffold(
                   backgroundColor: Colors.transparent,
                   body: AttendanceList(classId: classId),
-                )),
+                ),
               ),
-            );
-          },
-        ),
-        _buildClassToolCard(
-          context: context,
-          icon: Icons.receipt_long, // An icon for invoices
-          label: 'My Invoices',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                // Navigate to the new MyInvoicesPage
-                builder: (context) => const MyInvoicesPage(),
-              ),
-            );
-          },
-        ),
-      ],
+            ),
+          );
+        },
+      ),
+      _ClassTool(
+        label: 'My Invoices',
+        icon: Icons.receipt_long,
+        color: Colors.purple,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const MyInvoicesPage(),
+            ),
+          );
+        },
+      ),
+    ];
+
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16.0,
+        mainAxisSpacing: 16.0,
+        childAspectRatio: 1.0,
+      ),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16.0),
+      itemCount: tools.length,
+      itemBuilder: (context, index) {
+        return _buildClassToolCard(context, tools[index]);
+      },
     );
   }
 
-  Widget _buildClassToolCard({
-    required BuildContext context,
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildClassToolCard(BuildContext context, _ClassTool tool) {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 40, color: Theme.of(context).primaryColor),
-            const SizedBox(height: 10),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [tool.color.withOpacity(0.1), Colors.white],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(
+            color: tool.color.withOpacity(0.3),
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: InkWell(
+          onTap: tool.onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: tool.color.withOpacity(0.2),
+                  child: Icon(tool.icon, size: 30, color: tool.color),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  tool.label,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: tool.color.shade800,
+                      ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
