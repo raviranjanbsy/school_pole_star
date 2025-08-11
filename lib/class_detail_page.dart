@@ -19,6 +19,7 @@ import 'package:school_management/ui/attendance_summary_page.dart'; // New impor
 import 'package:school_management/widgets/stream_item_card.dart';
 import 'package:school_management/ui/take_attendance_page.dart';
 import 'package:school_management/widgets/gradient_container.dart';
+import 'package:school_management/subject_assignments_page.dart';
 
 class ClassDetailPage extends StatefulWidget {
   final SchoolClass schoolClass;
@@ -39,32 +40,32 @@ class ClassDetailPage extends StatefulWidget {
   State<ClassDetailPage> createState() => ClassDetailPageState();
 }
 
-class ClassDetailPageState extends State<ClassDetailPage> {
+class ClassDetailPageState extends State<ClassDetailPage>
+    with SingleTickerProviderStateMixin {
   final AuthService _authService = AuthService();
   List<StreamItem>? _streamItems;
   List<String> _subjects = [];
-  String? _selectedSubjectFilter;
   bool _isLoading = true;
   String? _error;
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadStream();
     _loadSubjectsForTeacher();
   }
 
-  List<StreamItem> get _filteredStreamItems {
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  List<StreamItem> get _announcements {
     if (_streamItems == null) return [];
-    if (_selectedSubjectFilter == null) {
-      return _streamItems!;
-    }
-    return _streamItems!.where((item) {
-      // Always show announcements, regardless of the filter.
-      if (item.type != 'assignment') return true;
-      // Show assignments that match the selected subject.
-      return item.subjectName == _selectedSubjectFilter;
-    }).toList();
+    return _streamItems!.where((item) => item.type == 'announcement').toList();
   }
 
   Future<void> _loadSubjectsForTeacher() async {
@@ -72,8 +73,6 @@ class ClassDetailPageState extends State<ClassDetailPage> {
       return;
     }
     try {
-      // Note: You need to implement `fetchSubjectsForTeacherInClass` in your AuthService.
-      // It should fetch the subjects a specific teacher is assigned to for a given class.
       final subjects = await _authService.fetchSubjectsForTeacherInClass(
         widget.teacherProfile!.uid,
         widget.schoolClass.classId,
@@ -120,28 +119,6 @@ class ClassDetailPageState extends State<ClassDetailPage> {
         appBar: AppBar(
           title: Text(widget.schoolClass.className),
           actions: [
-            if (_subjects.isNotEmpty)
-              PopupMenuButton<String?>(
-                onSelected: (String? value) {
-                  setState(() {
-                    _selectedSubjectFilter = value;
-                  });
-                },
-                icon: const Icon(Icons.filter_list),
-                tooltip: 'Filter by subject',
-                itemBuilder: (BuildContext context) {
-                  // Add "All Subjects" option to clear the filter
-                  final allSubjectsOption = const PopupMenuItem<String?>(
-                    value: null,
-                    child: Text('All Subjects'),
-                  );
-                  final subjectOptions = _subjects.map((String subject) {
-                    return PopupMenuItem<String?>(
-                        value: subject, child: Text(subject));
-                  }).toList();
-                  return [allSubjectsOption, ...subjectOptions];
-                },
-              ),
             if (widget.userRole == 'teacher')
               IconButton(
                 icon: const Icon(Icons.checklist_rtl),
@@ -174,11 +151,28 @@ class ClassDetailPageState extends State<ClassDetailPage> {
                 },
               ),
           ],
+          bottom: TabBar(
+            controller: _tabController,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            tabs: const [
+              Tab(text: 'Announcements'),
+              Tab(text: 'Assignments'),
+            ],
+          ),
         ),
         body: LoadingOverlay(
           isLoading: _isLoading,
           message: 'Loading stream...',
-          child: _buildBody(),
+          child: _error != null
+              ? Center(child: Text('Error: $_error'))
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildStreamList(_announcements, 'announcement'),
+                    _buildSubjectsGrid(),
+                  ],
+                ),
         ),
         floatingActionButton: widget.userRole == 'teacher'
             ? FloatingActionButton(
@@ -199,27 +193,18 @@ class ClassDetailPageState extends State<ClassDetailPage> {
     );
   }
 
-  Widget _buildBody() {
-    if (_error != null) {
-      return Center(child: Text('Error: $_error'));
-    }
-
-    if (_filteredStreamItems.isEmpty) {
-      if (_selectedSubjectFilter != null) {
-        return Center(
-            child: Text('No posts found for "${_selectedSubjectFilter}".'));
-      } else {
-        return const Center(child: Text('No posts in this class yet.'));
-      }
+  Widget _buildStreamList(List<StreamItem> items, String type) {
+    if (items.isEmpty) {
+      return Center(child: Text('No ${type}s in this class yet.'));
     }
 
     return RefreshIndicator(
       onRefresh: _loadStream,
       child: ListView.builder(
         padding: const EdgeInsets.all(8.0),
-        itemCount: _filteredStreamItems.length,
+        itemCount: items.length,
         itemBuilder: (context, index) {
-          final item = _filteredStreamItems[index];
+          final item = items[index];
           return Padding(
             padding: const EdgeInsets.only(bottom: 8.0),
             child: StreamItemCard(
@@ -241,6 +226,45 @@ class ClassDetailPageState extends State<ClassDetailPage> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildSubjectsGrid() {
+    if (_subjects.isEmpty) {
+      return const Center(
+          child: Text('No subjects assigned to this class yet.'));
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(8.0),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 8.0,
+        mainAxisSpacing: 8.0,
+      ),
+      itemCount: _subjects.length,
+      itemBuilder: (context, index) {
+        final subject = _subjects[index];
+        return Card(
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SubjectAssignmentsPage(
+                    classId: widget.schoolClass.classId,
+                    subjectName: subject,
+                  ),
+                ),
+              );
+            },
+            child: Center(
+              child:
+                  Text(subject, style: Theme.of(context).textTheme.titleLarge),
+            ),
+          ),
+        );
+      },
     );
   }
 
