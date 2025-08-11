@@ -7,11 +7,31 @@ import 'package:school_management/model_class/invoice.dart';
 import 'package:school_management/providers/invoice_provider.dart';
 import 'package:school_management/widgets/gradient_container.dart';
 
-class MyInvoicesPage extends ConsumerWidget {
+class MyInvoicesPage extends ConsumerStatefulWidget {
   const MyInvoicesPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MyInvoicesPage> createState() => _MyInvoicesPageState();
+}
+
+class _MyInvoicesPageState extends ConsumerState<MyInvoicesPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final invoicesAsyncValue = ref.watch(myInvoicesProvider);
 
     return GradientContainer(
@@ -19,23 +39,33 @@ class MyInvoicesPage extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           title: const Text('My Invoices'),
+          bottom: TabBar(
+            controller: _tabController,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            tabs: const [
+              Tab(text: 'Pending'),
+              Tab(text: 'Paid'),
+            ],
+          ),
         ),
         body: invoicesAsyncValue.when(
           data: (invoices) {
-            if (invoices.isEmpty) {
-              return const Center(
-                child: Text(
-                  'You have no invoices.',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-              );
-            }
-            return ListView.builder(
-              padding: const EdgeInsets.all(8.0),
-              itemCount: invoices.length,
-              itemBuilder: (context, index) {
-                return InvoiceTile(invoice: invoices[index]);
-              },
+            final pendingInvoices = invoices
+                .where((invoice) =>
+                    invoice.status.toLowerCase() == 'pending' ||
+                    invoice.status.toLowerCase() == 'overdue')
+                .toList();
+            final paidInvoices = invoices
+                .where((invoice) => invoice.status.toLowerCase() == 'paid')
+                .toList();
+
+            return TabBarView(
+              controller: _tabController,
+              children: [
+                _buildInvoicesList(pendingInvoices),
+                _buildInvoicesList(paidInvoices),
+              ],
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -44,6 +74,24 @@ class MyInvoicesPage extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildInvoicesList(List<Invoice> invoices) {
+    if (invoices.isEmpty) {
+      return const Center(
+        child: Text(
+          'You have no invoices in this category.',
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(8.0),
+      itemCount: invoices.length,
+      itemBuilder: (context, index) {
+        return InvoiceTile(invoice: invoices[index]);
+      },
     );
   }
 }
