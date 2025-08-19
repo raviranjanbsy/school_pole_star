@@ -13,6 +13,7 @@ class StreamItem extends Equatable {
   final String? subjectName;
   final String? attachmentUrl;
   final String? attachmentFileName;
+  final String? session; // For year-wise assignments
 
   const StreamItem({
     required this.id,
@@ -27,6 +28,7 @@ class StreamItem extends Equatable {
     this.subjectName,
     this.attachmentUrl,
     this.attachmentFileName,
+    this.session,
   });
 
   factory StreamItem.fromMap(Map<String, dynamic> map, String id) {
@@ -45,6 +47,7 @@ class StreamItem extends Equatable {
       subjectName: map['subjectName'] as String?,
       attachmentUrl: map['attachmentUrl'] as String?,
       attachmentFileName: map['attachmentFileName'] as String?,
+      session: map['session'] as String?,
     );
   }
 
@@ -61,6 +64,7 @@ class StreamItem extends Equatable {
       'subjectName': subjectName,
       'attachmentUrl': attachmentUrl,
       'attachmentFileName': attachmentFileName,
+      'session': session,
     };
   }
 
@@ -75,5 +79,6 @@ class StreamItem extends Equatable {
         subjectName,
         attachmentUrl,
         attachmentFileName,
+        session,
       ];
 }

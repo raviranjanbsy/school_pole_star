@@ -7,11 +7,13 @@ import 'package:school_management/widgets/stream_item_card.dart';
 class SubjectAssignmentsPage extends StatefulWidget {
   final String classId;
   final String subjectName;
+  final String? session;
 
   const SubjectAssignmentsPage({
     super.key,
     required this.classId,
     required this.subjectName,
+    this.session,
   });
 
   @override
@@ -40,7 +42,9 @@ class _SubjectAssignmentsPageState extends State<SubjectAssignmentsPage> {
       setState(() {
         _assignments = items
             .where((item) =>
-                item.type == 'assignment' && item.subjectName == widget.subjectName)
+                item.type == 'assignment' &&
+                item.subjectName == widget.subjectName &&
+                (widget.session == null || item.session == widget.session))
             .toList();
       });
     } catch (e) {
@@ -63,7 +67,8 @@ class _SubjectAssignmentsPageState extends State<SubjectAssignmentsPage> {
             : _error != null
                 ? Center(child: Text('Error: $_error'))
                 : _assignments == null || _assignments!.isEmpty
-                    ? const Center(child: Text('No assignments for this subject yet.'))
+                    ? const Center(
+                        child: Text('No assignments for this subject yet.'))
                     : RefreshIndicator(
                         onRefresh: _loadAssignments,
                         child: ListView.builder(
