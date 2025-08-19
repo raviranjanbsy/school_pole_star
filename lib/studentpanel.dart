@@ -1,6 +1,12 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:school_management/model_class/Alluser.dart';
 import 'package:school_management/model_class/student_table.dart';
 import 'package:school_management/model_class/school_class.dart';
@@ -28,6 +34,9 @@ class _StudentPanelState extends ConsumerState<StudentPanel> {
   int _selectedIndex = 1; // Default to Home tab
   StudentTable? _currentStudentProfile; // Make it mutable
   bool _isEditingProfile = false; // New state variable for edit mode
+  File? _imageFile;
+  Uint8List? _imageBytes;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -90,6 +99,54 @@ class _StudentPanelState extends ConsumerState<StudentPanel> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      if (kIsWeb) {
+        final bytes = await pickedFile.readAsBytes();
+        setState(() {
+          _imageBytes = bytes;
+        });
+      } else {
+        setState(() {
+          _imageFile = File(pickedFile.path);
+        });
+      }
+    }
+  }
+
+  Future<String?> _uploadImageFile(File image) async {
+    try {
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_pictures')
+          .child('${_authService.getAuth().currentUser!.uid}.jpg');
+      await storageRef.putFile(image);
+      return await storageRef.getDownloadURL();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload image: $e')),
+      );
+      return null;
+    }
+  }
+
+  Future<String?> _uploadImageBytes(Uint8List imageBytes) async {
+    try {
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_pictures')
+          .child('${_authService.getAuth().currentUser!.uid}.jpg');
+      await storageRef.putData(imageBytes);
+      return await storageRef.getDownloadURL();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload image: $e')),
+      );
+      return null;
+    }
   }
 
   @override
@@ -172,19 +229,48 @@ class _StudentPanelState extends ConsumerState<StudentPanel> {
               _buildModulePage(studentProfile), // Index 2: Module (Class Info)
             ];
 
-            return IndexedStack(index: _selectedIndex, children: pages);
+            return Scaffold(
+              body: IndexedStack(index: _selectedIndex, children: pages),
+              bottomNavigationBar: _buildBottomNavigationBar(studentProfile),
+            );
           },
         ),
-        bottomNavigationBar: BottomNavigationBar(
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Module'),
-          ],
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-        ),
       ),
+    );
+  }
+
+  BottomNavigationBar _buildBottomNavigationBar(StudentTable studentProfile) {
+    ImageProvider? profileImage;
+    if (kIsWeb && _imageBytes != null) {
+      profileImage = MemoryImage(_imageBytes!);
+    } else if (!kIsWeb && _imageFile != null) {
+      profileImage = FileImage(_imageFile!);
+    } else if (studentProfile.imageUrl != null &&
+        studentProfile.imageUrl!.isNotEmpty) {
+      profileImage = NetworkImage(studentProfile.imageUrl!);
+    }
+
+    return BottomNavigationBar(
+      items: <BottomNavigationBarItem>[
+        BottomNavigationBarItem(
+          icon: CircleAvatar(
+            radius: 15,
+            backgroundImage: profileImage,
+            onBackgroundImageError: (exception, stackTrace) {
+              print('Error loading image: $exception');
+            },
+            child: profileImage == null
+                ? const Icon(Icons.person, size: 15)
+                : null,
+          ),
+          label: 'Profile',
+        ),
+        const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+        const BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard), label: 'Module'),
+      ],
+      currentIndex: _selectedIndex,
+      onTap: _onItemTapped,
     );
   }
 
@@ -235,6 +321,18 @@ class _StudentPanelState extends ConsumerState<StudentPanel> {
     if (_currentStudentProfile == null) return;
 
     try {
+      String? imageUrl;
+      if (kIsWeb && _imageBytes != null) {
+        imageUrl = await _uploadImageBytes(_imageBytes!);
+      } else if (!kIsWeb && _imageFile != null) {
+        imageUrl = await _uploadImageFile(_imageFile!);
+      }
+
+      if (imageUrl != null) {
+        _currentStudentProfile =
+            _currentStudentProfile?.copyWith(imageUrl: imageUrl);
+      }
+
       // Assuming you have an update method in your AuthService
       await _authService.updateStudentProfile(_currentStudentProfile!);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -329,19 +427,49 @@ class _StudentPanelState extends ConsumerState<StudentPanel> {
     BuildContext context,
     StudentTable studentProfile,
   ) {
+    ImageProvider? backgroundImage;
+    if (kIsWeb && _imageBytes != null) {
+      backgroundImage = MemoryImage(_imageBytes!);
+    } else if (!kIsWeb && _imageFile != null) {
+      backgroundImage = FileImage(_imageFile!);
+    } else if (studentProfile.imageUrl != null &&
+        studentProfile.imageUrl!.isNotEmpty) {
+      backgroundImage = NetworkImage(studentProfile.imageUrl!);
+    }
+
     return Column(
       children: [
-        CircleAvatar(
-          radius: 50,
-          backgroundColor: Colors.grey.shade300,
-          backgroundImage: studentProfile.imageUrl != null &&
-                  studentProfile.imageUrl!.isNotEmpty
-              ? CachedNetworkImageProvider(studentProfile.imageUrl!)
-              : null,
-          child: studentProfile.imageUrl == null ||
-                  studentProfile.imageUrl!.isEmpty
-              ? const Icon(Icons.person, size: 50, color: Colors.grey)
-              : null,
+        Stack(
+          children: [
+            CircleAvatar(
+              radius: 50,
+              backgroundColor: Colors.grey.shade300,
+              backgroundImage: backgroundImage,
+              onBackgroundImageError: (exception, stackTrace) {
+                print('Error loading image: $exception');
+              },
+              child: backgroundImage == null
+                  ? const Icon(Icons.person, size: 50, color: Colors.grey)
+                  : null,
+            ),
+            if (_isEditingProfile)
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: const CircleAvatar(
+                    radius: 15,
+                    backgroundColor: Colors.blue,
+                    child: Icon(
+                      Icons.edit,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 16),
         Text(
