@@ -821,6 +821,30 @@ class AuthService {
     return assignments;
   }
 
+  Future<List<StreamItem>> fetchPreviousAssignments(
+    String classId,
+  ) async {
+    developer.log(
+      'Fetching previous assignments for class $classId',
+      name: 'AuthService.fetchPreviousAssignments',
+    );
+    try {
+      final allAssignments = await fetchAssignmentsForClass(classId);
+      final currentYear = DateTime.now().year.toString();
+      final previousAssignments = allAssignments
+          .where((assignment) => assignment.session != currentYear)
+          .toList();
+      return previousAssignments;
+    } catch (e) {
+      developer.log(
+        'Error fetching previous assignments',
+        name: 'AuthService.fetchPreviousAssignments',
+        error: e,
+      );
+      throw AuthException("Failed to fetch previous assignments.");
+    }
+  }
+
   /// Fetches a single school class by its ID.
   Future<SchoolClass?> fetchSchoolClassById(String classId) async {
     developer.log(

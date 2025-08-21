@@ -4,134 +4,87 @@ import 'package:school_management/model_class/stream_item.dart';
 import 'package:school_management/model_class/teacher_profile.dart';
 import 'package:school_management/services/auth_service.dart';
 import 'package:school_management/widgets/create_post_dialog.dart';
-import 'package:school_management/widgets/gradient_container.dart';
+import 'package:school_management/widgets/stream_item_card.dart';
 
 class PreviousAssignmentsPage extends StatefulWidget {
-  final String teacherId;
+  final TeacherProfile teacherProfile;
+  final SchoolClass schoolClass;
 
-  const PreviousAssignmentsPage({super.key, required this.teacherId});
+  const PreviousAssignmentsPage({
+    super.key,
+    required this.teacherProfile,
+    required this.schoolClass,
+  });
 
   @override
-  State<PreviousAssignmentsPage> createState() => _PreviousAssignmentsPageState();
+  State<PreviousAssignmentsPage> createState() =>
+      _PreviousAssignmentsPageState();
 }
 
 class _PreviousAssignmentsPageState extends State<PreviousAssignmentsPage> {
   final AuthService _authService = AuthService();
-  Map<String, List<StreamItem>> _assignmentsBySubject = {};
+  List<StreamItem>? _previousAssignments;
   bool _isLoading = true;
   String? _error;
-  List<SchoolClass> _teacherClasses = [];
-  TeacherProfile? _teacherProfile;
 
   @override
   void initState() {
     super.initState();
-    _loadInitialData();
+    _loadPreviousAssignments();
   }
 
-  Future<void> _loadInitialData() async {
+  Future<void> _loadPreviousAssignments() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
     try {
-      final assignments = await _authService.fetchAssignmentsForTeacher(widget.teacherId);
-      final groupedAssignments = <String, List<StreamItem>>{};
-      for (var assignment in assignments) {
-        final subject = assignment.subjectName ?? 'Uncategorized';
-        if (groupedAssignments.containsKey(subject)) {
-          groupedAssignments[subject]!.add(assignment);
-        } else {
-          groupedAssignments[subject] = [assignment];
-        }
-      }
-
-      final teacherClasses = await _authService.fetchAssignedClasses(widget.teacherId);
-      final teacherProfile = await _authService.getTeacherProfile(widget.teacherId);
-
+      final assignments = await _authService.fetchPreviousAssignments(
+        widget.schoolClass.classId,
+      );
       setState(() {
-        _assignmentsBySubject = groupedAssignments;
-        _teacherClasses = teacherClasses;
-        _teacherProfile = teacherProfile;
+        _previousAssignments = assignments;
       });
     } catch (e) {
-      setState(() => _error = 'An unexpected error occurred.');
+      setState(() {
+        _error = 'Failed to load previous assignments: ${e.toString()}';
+      });
     } finally {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return GradientContainer(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text('Previous Assignments'),
-        ),
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-                ? Center(child: Text('Error: $_error'))
-                : _assignmentsBySubject.isEmpty
-                    ? const Center(child: Text('No previous assignments found.'))
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(8.0),
-                        itemCount: _assignmentsBySubject.keys.length,
-                        itemBuilder: (context, index) {
-                          final subject = _assignmentsBySubject.keys.elementAt(index);
-                          final assignments = _assignmentsBySubject[subject]!;
-                          return ExpansionTile(
-                            title: Text(subject, style: Theme.of(context).textTheme.titleLarge),
-                            children: assignments.map((assignment) {
-                              return ListTile(
-                                title: Text(assignment.title ?? 'No Title'),
-                                subtitle: Text('Session: ${assignment.session ?? 'N/A'}'),
-                                trailing: ElevatedButton(
-                                  child: const Text('Reuse'),
-                                  onPressed: () {
-                                    _showClassSelectionDialog(assignment);
-                                  },
-                                ),
-                              );
-                            }).toList(),
-                          );
-                        },
-                      ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Reuse Previous Assignment'),
       ),
-    );
-  }
-
-  Future<void> _showClassSelectionDialog(StreamItem assignment) async {
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Select a class to post this assignment'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: _teacherClasses.length,
-              itemBuilder: (context, index) {
-                final schoolClass = _teacherClasses[index];
-                return ListTile(
-                  title: Text(schoolClass.className),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    showCreatePostDialog(
-                      context,
-                      _teacherProfile!,
-                      schoolClass,
-                      assignment,
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        );
-      },
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(child: Text(_error!))
+              : _previousAssignments == null || _previousAssignments!.isEmpty
+                  ? const Center(child: Text('No previous assignments found.'))
+                  : ListView.builder(
+                      itemCount: _previousAssignments!.length,
+                      itemBuilder: (context, index) {
+                        final assignment = _previousAssignments![index];
+                        return StreamItemCard(
+                          item: assignment,
+                          onTap: () {
+                            showCreatePostDialog(
+                              context,
+                              widget.teacherProfile,
+                              widget.schoolClass,
+                              assignment,
+                            );
+                          },
+                        );
+                      },
+                    ),
     );
   }
 }

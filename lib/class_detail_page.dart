@@ -21,6 +21,7 @@ import 'package:school_management/ui/take_attendance_page.dart';
 import 'package:school_management/widgets/gradient_container.dart';
 import 'package:school_management/subject_assignments_page.dart';
 import 'package:school_management/widgets/create_post_dialog.dart';
+import 'package:school_management/teacher/previous_assignments_page.dart';
 
 class ClassDetailPage extends StatefulWidget {
   final SchoolClass schoolClass;
@@ -189,19 +190,50 @@ class ClassDetailPageState extends State<ClassDetailPage>
                 ),
         ),
         floatingActionButton: widget.userRole == 'teacher'
-            ? FloatingActionButton(
-                onPressed: () {
-                  if (widget.teacherProfile != null) {
-                    showCreatePostDialog(
-                        context, widget.teacherProfile!, widget.schoolClass, null);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text(
-                            'Teacher profile not available to create post.')));
-                  }
-                },
-                child: const Icon(Icons.add),
-                tooltip: 'Create Post',
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  FloatingActionButton(
+                    onPressed: () {
+                      if (widget.teacherProfile != null) {
+                        showCreatePostDialog(context, widget.teacherProfile!,
+                            widget.schoolClass, null);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text(
+                                  'Teacher profile not available to create post.')),
+                        );
+                      }
+                    },
+                    tooltip: 'Create Post',
+                    child: const Icon(Icons.add),
+                  ),
+                  const SizedBox(height: 16),
+                  FloatingActionButton(
+                    onPressed: () {
+                      if (widget.teacherProfile != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PreviousAssignmentsPage(
+                              teacherProfile: widget.teacherProfile!,
+                              schoolClass: widget.schoolClass,
+                            ),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text(
+                                  'Teacher profile not available to reuse assignments.')),
+                        );
+                      }
+                    },
+                    tooltip: 'Reuse Previous Assignment',
+                    child: const Icon(Icons.history),
+                  ),
+                ],
               )
             : null,
       ),
