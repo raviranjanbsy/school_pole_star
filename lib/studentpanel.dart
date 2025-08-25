@@ -176,7 +176,8 @@ class _StudentPanelState extends ConsumerState<StudentPanel> {
           ),
           leading: Padding(
             padding: const EdgeInsets.all(10.0),
-            child: Image.asset('images/logo.png'), // Using consistent logo path
+            child: Image.asset(
+                'images/school_logo.png'), // Using consistent logo path
           ),
           actions: [
             IconButton(

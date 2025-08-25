@@ -1230,7 +1230,7 @@ AppBar(
   ),
   leading: Padding(
     padding: EdgeInsets.all(8.0),
-    child: Image.asset('assets/logo.png'), // replace with your logo
+    child: Image.asset('assets/school_logo.png'), // replace with your logo
   ),
 )
 

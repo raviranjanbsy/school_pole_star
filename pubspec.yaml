@@ -52,9 +52,9 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "images/logo.png"
+  image_path: "images/school_logo.png"
   adaptive_icon_background: "#005A9C"
-  adaptive_icon_foreground: "images/logo.png"
+  adaptive_icon_foreground: "images/school_logo.png"
   remove_alpha_ios: true
 
 flutter:

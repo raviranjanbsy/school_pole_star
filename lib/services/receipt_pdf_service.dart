@@ -12,7 +12,7 @@ class ReceiptPdfService {
     final pdf = pw.Document();
 
     final image = pw.MemoryImage(
-      (await rootBundle.load('images/logo.png')).buffer.asUint8List(),
+      (await rootBundle.load('images/school_logo.png')).buffer.asUint8List(),
     );
 
     // Load fonts

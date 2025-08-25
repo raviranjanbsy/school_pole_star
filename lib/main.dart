@@ -155,7 +155,7 @@ class SplashScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset('images/logo.png', width: 160, height: 160),
+              Image.asset('images/school_logo.png', width: 160, height: 160),
               const SizedBox(height: 60),
               const CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
@@ -349,7 +349,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          Image.asset('images/logo.png', height: 160),
+                          Image.asset('images/school_logo.png', height: 160),
                           const SizedBox(height: 32),
                           Text(
                             'Welcome Back!',
