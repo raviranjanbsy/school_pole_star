@@ -230,6 +230,7 @@ class _StudentPanelState extends ConsumerState<StudentPanel> {
             ];
 
             return Scaffold(
+              backgroundColor: Colors.transparent,
               body: IndexedStack(index: _selectedIndex, children: pages),
               bottomNavigationBar: _buildBottomNavigationBar(studentProfile),
             );
