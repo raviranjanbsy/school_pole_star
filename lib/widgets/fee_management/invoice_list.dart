@@ -12,6 +12,7 @@ class InvoiceList extends StatelessWidget {
   final Function(Invoice) onManagePayment;
   final Function(Invoice) onMarkAsPaid;
   final Function(Invoice) onDelete;
+  final Function(Invoice) onGeneratePdf;
 
   const InvoiceList({
     super.key,
@@ -23,6 +24,7 @@ class InvoiceList extends StatelessWidget {
     required this.onManagePayment,
     required this.onMarkAsPaid,
     required this.onDelete,
+    required this.onGeneratePdf,
   });
 
   @override
