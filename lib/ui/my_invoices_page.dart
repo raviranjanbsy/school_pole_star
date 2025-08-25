@@ -6,6 +6,7 @@ import 'package:school_management/main.dart';
 import 'package:school_management/model_class/invoice.dart';
 import 'package:school_management/providers/invoice_provider.dart';
 import 'package:school_management/widgets/gradient_container.dart';
+import 'package:school_management/services/receipt_pdf_service.dart';
 
 class MyInvoicesPage extends ConsumerStatefulWidget {
   const MyInvoicesPage({super.key});
@@ -161,6 +162,29 @@ class InvoiceTile extends ConsumerWidget {
             },
             child: const Text('Pay Now'),
           ),
+          IntrinsicWidth(
+            child: Column(
+              // Use a Column to stack status text and button
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(invoice.status.toUpperCase(),
+                    style: TextStyle(
+                        color: Colors.red, fontWeight: FontWeight.bold)),
+                if (invoice.status.toLowerCase() ==
+                    'paid') // Only show for paid invoices
+                  TextButton.icon(
+                    onPressed: () async {
+                      // Trigger PDF generation
+                      await ReceiptPdfService.generateAndOpenReceiptPdf(
+                          invoice);
+                    },
+                    icon: const Icon(Icons.picture_as_pdf, size: 20),
+                    label: const Text('View Receipt'),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -196,6 +220,11 @@ class InvoiceTile extends ConsumerWidget {
         statusColor = Colors.orange;
         statusTextColor = Colors.orange.shade800;
         break;
+      case 'partially_paid':
+        statusIcon = Icons.hourglass_bottom;
+        statusColor = Colors.blue;
+        statusTextColor = Colors.blue.shade700;
+        break;
       default: // 'cancelled' or other statuses
         statusIcon = Icons.cancel;
         statusColor = Colors.grey;
@@ -230,9 +259,10 @@ class InvoiceTile extends ConsumerWidget {
           // Adding a small line height to improve readability of multi-line text
           style: const TextStyle(height: 1.4),
         ),
-        trailing: isPayable
-            ? IntrinsicWidth(
-                child: ElevatedButton(
+        trailing: SizedBox(
+          width: 100, // Adjust this width as needed
+          child: isPayable
+              ? ElevatedButton(
                   onPressed: () =>
                       _handlePayment(context, ref, invoice, currencyFormat),
                   style: ElevatedButton.styleFrom(
@@ -240,11 +270,21 @@ class InvoiceTile extends ConsumerWidget {
                     foregroundColor: Colors.white,
                   ),
                   child: const Text('Pay Now'),
-                ),
-              )
-            : Text(invoice.status.toUpperCase(),
-                style: TextStyle(
-                    color: statusTextColor, fontWeight: FontWeight.bold)),
+                )
+              : (invoice.status.toLowerCase() == 'paid'
+                  ? TextButton.icon(
+                      onPressed: () {
+                        ReceiptPdfService.generateAndOpenReceiptPdf(invoice);
+                      },
+                      icon: const Icon(Icons.picture_as_pdf),
+                      label: const Text('Receipt'),
+                    )
+                  : Text(
+                      invoice.status.toUpperCase(),
+                      style: TextStyle(
+                          color: statusTextColor, fontWeight: FontWeight.bold),
+                    )),
+        ),
       ),
     );
   }

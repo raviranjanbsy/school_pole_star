@@ -13,6 +13,16 @@ class Invoice extends Equatable {
   final int issueDate; // Timestamp
   final int? dueDate; // Optional timestamp
   final int? paymentDate; // Optional timestamp
+  final String? studentAdmissionNumber;
+  final String? academicYear;
+  final String? fatherName;
+  final String? motherName;
+  final String? feeCategory; // Assuming a single fee category for simplicity
+  final String? paymentMethod;
+  final String? referenceNumber;
+  final String? bankName;
+  final String? amountPaidInWords;
+  final String? remarks;
 
   const Invoice({
     required this.id,
@@ -27,6 +37,16 @@ class Invoice extends Equatable {
     required this.issueDate,
     this.dueDate,
     this.paymentDate,
+    this.studentAdmissionNumber, // Initialize in constructor
+    this.academicYear, // Initialize in constructor
+    this.fatherName, // Initialize in constructor
+    this.motherName, // Initialize in constructor
+    this.feeCategory, // Initialize in constructor
+    this.paymentMethod, // Initialize in constructor
+    this.referenceNumber, // Initialize in constructor
+    this.bankName, // Initialize in constructor
+    this.amountPaidInWords, // Initialize in constructor
+    this.remarks, // Initialize in constructor
   });
 
   factory Invoice.fromMap(Map<String, dynamic> map, String id) {
@@ -44,6 +64,17 @@ class Invoice extends Equatable {
       issueDate: map['issueDate'] as int? ?? 0,
       dueDate: map['dueDate'] as int?,
       paymentDate: map['paymentDate'] as int?,
+      studentAdmissionNumber:
+          map['studentAdmissionNumber'] as String?, // Add this
+      academicYear: map['academicYear'] as String?, // Add this
+      fatherName: map['fatherName'] as String?, // Add this
+      motherName: map['motherName'] as String?, // Add this
+      feeCategory: map['feeCategory'] as String?, // Add this
+      paymentMethod: map['paymentMethod'] as String?, // Add this
+      referenceNumber: map['referenceNumber'] as String?, // Add this
+      bankName: map['bankName'] as String?, // Add this
+      amountPaidInWords: map['amountPaidInWords'] as String?, // Add this
+      remarks: map['remarks'] as String?, // Add this
     );
   }
 
@@ -60,6 +91,16 @@ class Invoice extends Equatable {
       'issueDate': issueDate,
       'dueDate': dueDate,
       'paymentDate': paymentDate,
+      'studentAdmissionNumber': studentAdmissionNumber, // Add this
+      'academicYear': academicYear, // Add this
+      'fatherName': fatherName, // Add this
+      'motherName': motherName, // Add this
+      'feeCategory': feeCategory, // Add this
+      'paymentMethod': paymentMethod, // Add this
+      'referenceNumber': referenceNumber, // Add this
+      'bankName': bankName, // Add this
+      'amountPaidInWords': amountPaidInWords, // Add this
+      'remarks': remarks, // Add this
     };
   }
 
@@ -76,7 +117,17 @@ class Invoice extends Equatable {
         amountPaid,
         issueDate,
         dueDate,
-        paymentDate
+        paymentDate,
+        studentAdmissionNumber,
+        academicYear,
+        fatherName,
+        motherName,
+        feeCategory,
+        paymentMethod,
+        referenceNumber,
+        bankName,
+        amountPaidInWords,
+        remarks
       ];
 
   // Helper method to create a copy with updated fields
@@ -93,6 +144,16 @@ class Invoice extends Equatable {
     int? issueDate,
     int? dueDate,
     int? paymentDate,
+    String? studentAdmissionNumber,
+    String? academicYear,
+    String? fatherName,
+    String? motherName,
+    String? feeCategory, // Assuming a single fee category for simplicity
+    String? paymentMethod,
+    String? referenceNumber,
+    String? bankName,
+    String? amountPaidInWords,
+    String? remarks,
   }) {
     return Invoice(
       id: id ?? this.id,
@@ -107,6 +168,17 @@ class Invoice extends Equatable {
       issueDate: issueDate ?? this.issueDate,
       dueDate: dueDate ?? this.dueDate,
       paymentDate: paymentDate ?? this.paymentDate,
+      studentAdmissionNumber:
+          studentAdmissionNumber ?? this.studentAdmissionNumber,
+      academicYear: academicYear ?? this.academicYear,
+      fatherName: fatherName ?? this.fatherName,
+      motherName: motherName ?? this.motherName,
+      feeCategory: feeCategory ?? this.feeCategory,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      referenceNumber: referenceNumber ?? this.referenceNumber,
+      bankName: bankName ?? this.bankName,
+      amountPaidInWords: amountPaidInWords ?? this.amountPaidInWords,
+      remarks: remarks ?? this.remarks,
     );
   }
 }

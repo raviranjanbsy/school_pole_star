@@ -175,6 +175,11 @@ class FeeManagementNotifier extends _$FeeManagementNotifier {
     // Academic Year Filter
     if (currentState.selectedAcademicYear != null) {
       filtered = filtered.where((invoice) {
+        // Prioritize the academicYear on the invoice itself, if it exists.
+        if (invoice.academicYear != null && invoice.academicYear!.isNotEmpty) {
+          return invoice.academicYear == currentState.selectedAcademicYear;
+        }
+        // Fallback for older data that might rely on the fee structure's year.
         final feeStructure =
             currentState.feeStructureMap[invoice.feeStructureId];
         return feeStructure?.academicYear == currentState.selectedAcademicYear;
@@ -247,6 +252,26 @@ class FeeManagementNotifier extends _$FeeManagementNotifier {
 
   void _updateStateWithFilters(FeeManagementState newState) {
     state = AsyncData(_applyFilters(newState));
+  }
+
+  Future<String> generateNewInvoiceId(String academicYear, String type) async {
+    try {
+      // This calls a new method on your AuthService that you need to implement.
+      // This method should atomically increment and return a counter from Firestore.
+      final counter = await _authService.generateInvoiceId(academicYear, type);
+
+      // Format: TYPE-YYYY-0001
+      final yearForId = academicYear.replaceAll('-', '');
+      final paddedCounter = counter.toString().padLeft(4, '0');
+
+      return '${type.toUpperCase()}-$yearForId-$paddedCounter';
+    } catch (e) {
+      developer.log('Error generating new invoice ID: $e',
+          name: 'FeeManagementNotifier');
+      // Fallback to a random ID if counter fails to prevent blocking invoice creation.
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      return '${type.toUpperCase()}-${academicYear.replaceAll('-', '')}-ERR$timestamp';
+    }
   }
 
   // --- Methods to be called from the UI ---

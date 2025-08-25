@@ -1125,26 +1125,41 @@ class AuthService {
     }
   }
 
-  /// Updates an existing invoice.
+  /// Updates an existing invoice using a transaction to prevent conflicts.
   Future<void> updateInvoice(Invoice invoice) async {
     developer.log(
-      'Updating invoice: ${invoice.id}',
+      'Updating invoice via transaction: ${invoice.id}',
       name: 'AuthService.updateInvoice',
     );
     try {
       final invoiceRef = _db.ref('invoices/${invoice.id}');
-      await invoiceRef.update(invoice.toMap());
-      developer.log(
-        'Invoice ${invoice.id} updated successfully.',
-        name: 'AuthService.updateInvoice',
-      );
+      final result = await invoiceRef.runTransaction((Object? currentValue) {
+        if (currentValue == null) {
+          return Transaction.abort();
+        }
+        return Transaction.success(invoice.toMap());
+      });
+
+      if (result.committed) {
+        developer.log(
+          'Invoice ${invoice.id} updated successfully via transaction.',
+          name: 'AuthService.updateInvoice',
+        );
+      } else {
+        developer.log(
+          'Invoice update transaction was aborted for ${invoice.id}.',
+          name: 'AuthService.updateInvoice',
+        );
+        throw AuthException(
+            "Failed to update invoice. The data was modified by another user. Please refresh and try again.");
+      }
     } catch (e) {
       developer.log(
-        'Error updating invoice ${invoice.id}',
+        'Error updating invoice ${invoice.id} with transaction',
         name: 'AuthService.updateInvoice',
         error: e,
       );
-      throw AuthException("Failed to update invoice.");
+      throw AuthException("An unexpected error occurred while updating the invoice.");
     }
   }
 
@@ -1980,26 +1995,50 @@ class AuthService {
     }
   }
 
-  /// Updates an existing fee category.
+  /// Updates an existing fee category using a transaction to prevent conflicts.
   Future<void> updateFeeCategory(FeeCategory feeCategory) async {
     developer.log(
-      'Updating fee category: ${feeCategory.id}',
+      'Updating fee category via transaction: ${feeCategory.id}',
       name: 'AuthService.updateFeeCategory',
     );
     try {
       final feeRef = _db.ref('fee_categories/${feeCategory.id}');
-      await feeRef.update(feeCategory.toMap());
-      developer.log(
-        'Fee category ${feeCategory.id} updated successfully.',
-        name: 'AuthService.updateFeeCategory',
-      );
+      final result = await feeRef.runTransaction((Object? currentValue) {
+        // The current value is null if the node doesn't exist yet.
+        // This could happen if another user deleted it right before this transaction started.
+        if (currentValue == null) {
+          // Abort the transaction. You might want to handle this case specifically,
+          // perhaps by informing the user that the item was deleted.
+          return Transaction.abort();
+        }
+
+        // If the data is as expected, we proceed with the update.
+        // The toMap() method will provide the new data.
+        return Transaction.success(feeCategory.toMap());
+      });
+
+      if (result.committed) {
+        developer.log(
+          'Fee category ${feeCategory.id} updated successfully via transaction.',
+          name: 'AuthService.updateFeeCategory',
+        );
+      } else {
+        developer.log(
+          'Fee category update transaction was aborted for ${feeCategory.id}. It might have been modified or deleted by another user.',
+          name: 'AuthService.updateFeeCategory',
+        );
+        throw AuthException(
+            "Failed to update fee category. The data was modified by another user. Please refresh and try again.");
+      }
     } catch (e) {
       developer.log(
-        'Error updating fee category ${feeCategory.id}',
+        'Error updating fee category ${feeCategory.id} with transaction',
         name: 'AuthService.updateFeeCategory',
         error: e,
       );
-      throw AuthException("Failed to update fee category.");
+      // Re-throw a more user-friendly error.
+      throw AuthException(
+          "An unexpected error occurred while updating the fee category.");
     }
   }
 
@@ -2060,26 +2099,42 @@ class AuthService {
     }
   }
 
-  /// Updates an existing fee structure.
+  /// Updates an existing fee structure using a transaction to prevent conflicts.
   Future<void> updateFeeStructure(FeeStructure feeStructure) async {
     developer.log(
-      'Updating fee structure: ${feeStructure.id}',
+      'Updating fee structure via transaction: ${feeStructure.id}',
       name: 'AuthService.updateFeeStructure',
     );
     try {
       final feeRef = _db.ref('fee_structures/${feeStructure.id}');
-      await feeRef.update(feeStructure.toMap());
-      developer.log(
-        'Fee structure ${feeStructure.id} updated successfully.',
-        name: 'AuthService.updateFeeStructure',
-      );
+      final result = await feeRef.runTransaction((Object? currentValue) {
+        if (currentValue == null) {
+          return Transaction.abort();
+        }
+        return Transaction.success(feeStructure.toMap());
+      });
+
+      if (result.committed) {
+        developer.log(
+          'Fee structure ${feeStructure.id} updated successfully via transaction.',
+          name: 'AuthService.updateFeeStructure',
+        );
+      } else {
+        developer.log(
+          'Fee structure update transaction was aborted for ${feeStructure.id}.',
+          name: 'AuthService.updateFeeStructure',
+        );
+        throw AuthException(
+            "Failed to update fee structure. The data was modified by another user. Please refresh and try again.");
+      }
     } catch (e) {
       developer.log(
-        'Error updating fee structure ${feeStructure.id}',
+        'Error updating fee structure ${feeStructure.id} with transaction',
         name: 'AuthService.updateFeeStructure',
         error: e,
       );
-      throw AuthException("Failed to update fee structure.");
+      throw AuthException(
+          "An unexpected error occurred while updating the fee structure.");
     }
   }
 
@@ -2958,5 +3013,43 @@ class AuthService {
         error: e,
       );
     }
+  }
+
+  /// Generates the next sequential invoice ID based on a prefix from fee_config.
+  Future<String> generateInvoiceId(String academicYear, String type) async {
+    // 1. Get fee configuration
+    final configRef = _db.ref('fee_config');
+    final configSnapshot = await configRef.get();
+    final config = configSnapshot.exists
+        ? Map<String, dynamic>.from(configSnapshot.value as Map)
+        : <String, dynamic>{};
+    final prefix = config['invoicePrefix'] as String? ?? 'INV';
+
+    // 2. Get the next counter
+    final counter = await _getNextInvoiceCounter(academicYear, type);
+    final paddedCounter = counter.toString().padLeft(4, '0');
+
+    // 3. Construct the ID
+    final yearForId = academicYear.replaceAll('-', '');
+    return '$prefix-${type.toUpperCase()}-$yearForId-$paddedCounter';
+  }
+
+  /// Atomically increments and returns the next invoice counter for a given academic year and type.
+  Future<int> _getNextInvoiceCounter(String academicYear, String type) async {
+    final counterRef =
+        _db.ref('counters/invoices/${academicYear}_${type.toUpperCase()}');
+
+    final transactionResult = await counterRef.runTransaction((currentValue) {
+      int currentCount = (currentValue as int?) ?? 0;
+      currentCount++;
+      return Transaction.success(currentCount);
+    });
+
+    if (!transactionResult.committed) {
+      throw AuthException(
+          'Failed to generate invoice ID. Could not update counter.');
+    }
+
+    return transactionResult.snapshot.value as int;
   }
 }

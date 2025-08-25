@@ -155,8 +155,8 @@ class SplashScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset('images/logo.png', width: 120, height: 120),
-              const SizedBox(height: 20),
+              Image.asset('images/logo.png', width: 160, height: 160),
+              const SizedBox(height: 60),
               const CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
               ),
@@ -344,13 +344,13 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                   child: Form(
                     key: _formKey,
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 400),
+                      constraints: const BoxConstraints(maxWidth: 600),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          Image.asset('images/logo.png', height: 120),
-                          const SizedBox(height: 16),
+                          Image.asset('images/logo.png', height: 160),
+                          const SizedBox(height: 32),
                           Text(
                             'Welcome Back!',
                             textAlign: TextAlign.center,

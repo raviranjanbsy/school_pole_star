@@ -19,6 +19,11 @@ import 'package:school_management/widgets/fee_management/invoice_summary_card.da
 import 'package:school_management/widgets/fee_management/invoice_filter_controls.dart';
 import 'package:school_management/providers/fee_management_provider.dart';
 import 'package:school_management/widgets/gradient_container.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'package:share_plus/share_plus.dart';
+import 'package:cross_file/cross_file.dart';
 
 import 'dart:developer' as developer;
 
@@ -81,6 +86,47 @@ class _FeeManagementPageState extends ConsumerState<FeeManagementPage> {
       case InvoiceSortOption.studentNameDesc:
         return 'Sort by Student Name (Z-A)';
     }
+  }
+
+  Future<void> _generateInvoicePdf(Invoice invoice) async {
+    final student = ref
+        .read(feeManagementNotifierProvider)
+        .value!
+        .studentMap[invoice.studentUid];
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text('Invoice',
+                style:
+                    pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 20),
+            pw.Text('Student: ${student?.fullName ?? invoice.studentName}'),
+            pw.Text('Class: ${invoice.className}'),
+            pw.Text('Invoice ID: ${invoice.id}'),
+            pw.Divider(height: 20),
+            pw.Text('Amount Due: ${invoice.amountDue.toStringAsFixed(2)}'),
+            pw.Text('Amount Paid: ${invoice.amountPaid.toStringAsFixed(2)}'),
+            pw.Text('Status: ${invoice.status.capitalize()}'),
+            pw.Text(
+                'Issue Date: ${DateFormat.yMMMd().format(DateTime.fromMillisecondsSinceEpoch(invoice.issueDate))}'),
+            pw.Text(
+                'Due Date: ${DateFormat.yMMMd().format(DateTime.fromMillisecondsSinceEpoch(invoice.dueDate ?? 0))}'),
+            if (invoice.paymentDate != null)
+              pw.Text(
+                  'Payment Date: ${DateFormat.yMMMd().format(DateTime.fromMillisecondsSinceEpoch(invoice.paymentDate!))}'),
+          ],
+        ),
+      ),
+    );
+
+    final output = await getTemporaryDirectory();
+    final file = File("${output.path}/invoice_${invoice.id}.pdf");
+    await file.writeAsBytes(await pdf.save());
+    await Share.shareXFiles([XFile(file.path)], text: 'Invoice PDF');
   }
 
   Future<void> _addFeeStructure(FeeManagementState state) async {
@@ -662,8 +708,9 @@ class _FeeManagementPageState extends ConsumerState<FeeManagementPage> {
 
   Future<void> _createSingleInvoice(FeeManagementState state) async {
     final students = state.students;
-    final feeCategories = state.feeCategories;
+    final feeStructures = state.feeStructures;
     final schoolClasses = state.schoolClasses;
+    final feeCategories = state.feeCategories; // Keep for getting type
 
     if (students.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -673,17 +720,17 @@ class _FeeManagementPageState extends ConsumerState<FeeManagementPage> {
       );
       return;
     }
-    if (feeCategories.isEmpty) {
+    if (feeStructures.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('No fee categories defined. Please add one first.'),
+          content: Text('No fee structures defined. Please add one first.'),
         ),
       );
       return;
     }
 
     StudentTable? selectedStudent;
-    FeeCategory? selectedFeeCategory;
+    FeeStructure? selectedFeeStructure;
 
     final result = await showDialog<Invoice>(
       context: context,
@@ -692,6 +739,12 @@ class _FeeManagementPageState extends ConsumerState<FeeManagementPage> {
           title: const Text('Generate New Invoice'),
           content: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
+              final relevantFeeStructures = selectedStudent == null
+                  ? <FeeStructure>[]
+                  : feeStructures
+                      .where((fs) => fs.classId == selectedStudent!.classId)
+                      .toList();
+
               return SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -712,29 +765,33 @@ class _FeeManagementPageState extends ConsumerState<FeeManagementPage> {
                       onChanged: (value) {
                         setState(() {
                           selectedStudent = value;
+                          selectedFeeStructure = null; // Reset fee structure
                         });
                       },
                       validator: (value) =>
                           value == null ? 'Please select a student' : null,
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<FeeCategory>(
+                    DropdownButtonFormField<FeeStructure>(
                       isExpanded: true,
                       decoration: const InputDecoration(
-                        labelText: 'Select Fee Type',
+                        labelText: 'Select Fee Structure',
                       ),
-                      value: selectedFeeCategory,
-                      items: feeCategories.map((fee) {
-                        return DropdownMenuItem(
-                          value: fee,
-                          child: Text(
-                            '${fee.name} - ₹${fee.amount.toStringAsFixed(2)} (${fee.type})',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      }).toList(),
+                      value: selectedFeeStructure,
+                      // Disable if student is not selected
+                      items: selectedStudent == null
+                          ? []
+                          : relevantFeeStructures.map((fs) {
+                              return DropdownMenuItem(
+                                value: fs,
+                                child: Text(
+                                  '${fs.feeCategoryName} - ₹${fs.amount?.toStringAsFixed(2)} (${fs.academicYear})',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
                       onChanged: (value) {
-                        setState(() => selectedFeeCategory = value);
+                        setState(() => selectedFeeStructure = value);
                       },
                       validator: (value) => value == null
                           ? 'Please select a fee structure'
@@ -751,16 +808,31 @@ class _FeeManagementPageState extends ConsumerState<FeeManagementPage> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
-                if (selectedStudent != null && selectedFeeCategory != null) {
+              onPressed: () async {
+                if (selectedStudent != null && selectedFeeStructure != null) {
+                  final academicYear = selectedFeeStructure!.academicYear;
+                  // Find the fee category to get its type (recurring/one-time)
+                  final feeCategory = feeCategories.firstWhere(
+                      (c) => c.id == selectedFeeStructure!.feeCategoryId,
+                      orElse: () => FeeCategory(
+                          id: '',
+                          name: 'Unknown',
+                          amount: 0,
+                          type: 'unknown',
+                          isOptional: false));
+                  final type = feeCategory.type;
+
+                  final newInvoiceId = await ref
+                      .read(feeManagementNotifierProvider.notifier)
+                      .generateNewInvoiceId(academicYear, type);
+
                   Navigator.pop(
                     context,
                     Invoice(
-                      id: '', // Firebase will generate this
+                      id: newInvoiceId,
                       studentUid: selectedStudent!.uid,
                       studentName: selectedStudent!.fullName,
-                      classId: selectedStudent!.classId ??
-                          '', // Use student's assigned class
+                      classId: selectedStudent!.classId ?? '',
                       className: schoolClasses
                           .firstWhere(
                             (cls) => cls.classId == selectedStudent!.classId,
@@ -775,13 +847,14 @@ class _FeeManagementPageState extends ConsumerState<FeeManagementPage> {
                             ),
                           )
                           .className,
-                      feeStructureId: selectedFeeCategory!.id,
-                      amountDue: selectedFeeCategory!.amount,
-                      status: 'pending', // Default status for new invoice
+                      feeStructureId: selectedFeeStructure!.id,
+                      academicYear: selectedFeeStructure!.academicYear,
+                      amountDue: selectedFeeStructure!.amount ?? 0.0,
+                      status: 'pending',
                       issueDate: DateTime.now().millisecondsSinceEpoch,
                       dueDate: DateTime.now()
                           .add(const Duration(days: 30))
-                          .millisecondsSinceEpoch, // 30 days from now
+                          .millisecondsSinceEpoch,
                     ),
                   );
                 }
@@ -1561,6 +1634,7 @@ class _FeeManagementPageState extends ConsumerState<FeeManagementPage> {
                     onMarkAsPaid: (invoice) =>
                         _markInvoiceAsPaid(state, invoice),
                     onDelete: (invoice) => _deleteInvoice(state, invoice),
+                    onGeneratePdf: (invoice) => _generateInvoicePdf(invoice),
                   ),
                   _buildPaginationControls(state),
                 ],
