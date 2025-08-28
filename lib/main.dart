@@ -220,7 +220,7 @@ class MyHomePage extends ConsumerStatefulWidget {
   ConsumerState<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends ConsumerState<MyHomePage> {
+class _MyHomePageState extends ConsumerState<MyHomePage> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _email = TextEditingController();
   final TextEditingController _password = TextEditingController();
@@ -228,8 +228,38 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   bool _isLoading = false;
   bool _isPasswordVisible = false;
 
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
+      ),
+    );
+
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
+      ),
+    );
+
+    _controller.forward();
+  }
+
   @override
   void dispose() {
+    _controller.dispose();
     _email.dispose();
     _password.dispose();
     super.dispose();
@@ -349,119 +379,129 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          Image.asset('images/school_logo.png', height: 160),
+                          FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: Image.asset('images/school_logo.png', height: 160),
+                          ),
                           const SizedBox(height: 32),
-                          Text(
-                            'Welcome Back!',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .displaySmall
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
+                          SlideTransition(
+                            position: _slideAnimation,
+                            child: Column(
+                              children: [
+                                Text(
+                                  'Welcome Back!',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .displaySmall
+                                      ?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                 ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Sign in to your account to continue',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(color: Colors.white70),
-                          ),
-                          const SizedBox(height: 40),
-                          TextFormField(
-                            controller: _email,
-                            decoration: InputDecoration(
-                              labelText: 'Email',
-                              prefixIcon: Icon(
-                                Icons.email_outlined,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                            keyboardType: TextInputType.emailAddress,
-                            style: const TextStyle(
-                                color: Colors
-                                    .black), // Ensure input text is visible
-                            validator: (value) =>
-                                (value == null || !value.contains('@'))
-                                    ? 'Enter a valid email'
-                                    : null,
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _password,
-                            obscureText: !_isPasswordVisible,
-                            decoration: InputDecoration(
-                              labelText: 'Password',
-                              prefixIcon: Icon(
-                                Icons.lock_outline,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _isPasswordVisible
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Sign in to your account to continue',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(color: Colors.white70),
                                 ),
-                                onPressed: () {
-                                  setState(() =>
-                                      _isPasswordVisible = !_isPasswordVisible);
-                                },
-                              ),
-                            ),
-                            style: const TextStyle(
-                                color: Colors
-                                    .black), // Ensure input text is visible
-                            validator: (value) =>
-                                (value == null || value.isEmpty)
-                                    ? 'Enter your password'
-                                    : null,
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              InkWell(
-                                onTap: () {
-                                  final newValue = !_rememberMe;
-                                  _saveRememberMePreference(newValue);
-                                  setState(() => _rememberMe = newValue!);
-                                },
-                                child: Row(
+                                const SizedBox(height: 40),
+                                TextFormField(
+                                  controller: _email,
+                                  decoration: InputDecoration(
+                                    labelText: 'Email',
+                                    prefixIcon: Icon(
+                                      Icons.email_outlined,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                  keyboardType: TextInputType.emailAddress,
+                                  style: const TextStyle(
+                                      color: Colors
+                                          .black), // Ensure input text is visible
+                                  validator: (value) =>
+                                      (value == null || !value.contains('@'))
+                                          ? 'Enter a valid email'
+                                          : null,
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  controller: _password,
+                                  obscureText: !_isPasswordVisible,
+                                  decoration: InputDecoration(
+                                    labelText: 'Password',
+                                    prefixIcon: Icon(
+                                      Icons.lock_outline,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _isPasswordVisible
+                                            ? Icons.visibility
+                                            : Icons.visibility_off,
+                                      ),
+                                      onPressed: () {
+                                        setState(() =>
+                                            _isPasswordVisible = !_isPasswordVisible);
+                                      },
+                                    ),
+                                  ),
+                                  style: const TextStyle(
+                                      color: Colors
+                                          .black), // Ensure input text is visible
+                                  validator: (value) =>
+                                      (value == null || value.isEmpty)
+                                          ? 'Enter your password'
+                                          : null,
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Checkbox(
-                                      value: _rememberMe,
-                                      onChanged: (bool? newValue) {
-                                        _saveRememberMePreference(newValue!);
+                                    InkWell(
+                                      onTap: () {
+                                        final newValue = !_rememberMe;
+                                        _saveRememberMePreference(newValue);
                                         setState(() => _rememberMe = newValue!);
                                       },
-                                      checkColor: Colors.white,
-                                      activeColor:
-                                          Theme.of(context).colorScheme.primary,
+                                      child: Row(
+                                        children: [
+                                          Checkbox(
+                                            value: _rememberMe,
+                                            onChanged: (bool? newValue) {
+                                              _saveRememberMePreference(newValue!);
+                                              setState(() => _rememberMe = newValue!);
+                                            },
+                                            checkColor: Colors.white,
+                                            activeColor:
+                                                Theme.of(context).colorScheme.primary,
+                                          ),
+                                          const Text(
+                                            "Remember Me",
+                                            style: TextStyle(color: Colors.white),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    const Text(
-                                      "Remember Me",
-                                      style: TextStyle(color: Colors.white),
+                                    TextButton(
+                                      onPressed: _isLoading
+                                          ? null
+                                          : _showForgotPasswordDialog,
+                                      child: const Text('Forgot Password?',
+                                          style: TextStyle(color: Colors.white70)),
                                     ),
                                   ],
                                 ),
-                              ),
-                              TextButton(
-                                onPressed: _isLoading
-                                    ? null
-                                    : _showForgotPasswordDialog,
-                                child: const Text('Forgot Password?',
-                                    style: TextStyle(color: Colors.white70)),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton(
-                            onPressed: _isLoading ? null : _loginUser,
-                            child: const Text('Login'),
+                                const SizedBox(height: 24),
+                                ElevatedButton(
+                                  onPressed: _isLoading ? null : _loginUser,
+                                  child: const Text('Login'),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),

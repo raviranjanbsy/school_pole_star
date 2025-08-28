@@ -17,6 +17,7 @@ import 'package:school_management/ui/change_password_dialog.dart';
 import 'package:school_management/providers/home_stream_provider.dart';
 import 'package:school_management/utils/logout_helper.dart';
 import 'package:school_management/widgets/gradient_container.dart';
+import 'dart:math';
 
 class StudentPanel extends ConsumerStatefulWidget {
   final Alluser currentUser;
@@ -27,7 +28,7 @@ class StudentPanel extends ConsumerStatefulWidget {
   ConsumerState<StudentPanel> createState() => _StudentPanelState();
 }
 
-class _StudentPanelState extends ConsumerState<StudentPanel> {
+class _StudentPanelState extends ConsumerState<StudentPanel> with TickerProviderStateMixin {
   final AuthService _authService = AuthService();
   late Future<StudentTable> _studentProfileFuture;
   Future<SchoolClass?>? _classDetailsFuture;
@@ -38,10 +39,41 @@ class _StudentPanelState extends ConsumerState<StudentPanel> {
   Uint8List? _imageBytes;
   final ImagePicker _picker = ImagePicker();
 
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
   @override
   void initState() {
     super.initState();
     _loadStudentProfile();
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeIn,
+      ),
+    );
+
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeOut,
+      ),
+    );
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   void _loadStudentProfile() {
@@ -80,6 +112,8 @@ class _StudentPanelState extends ConsumerState<StudentPanel> {
   void _refreshAllData() {
     setState(() {
       _loadStudentProfile();
+      _animationController.reset();
+      _animationController.forward();
     });
   }
 
@@ -283,12 +317,238 @@ class _StudentPanelState extends ConsumerState<StudentPanel> {
       child: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          _buildProfileHeader(context, _currentStudentProfile!),
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: _buildProfileHeader(context, _currentStudentProfile!),
+            ),
+          ),
           const SizedBox(height: 16),
-          _buildAcademicCard(context, _currentStudentProfile!),
-          _buildPersonalCard(context, _currentStudentProfile!),
-          _buildParentInfoCard(context, _currentStudentProfile!),
-          _buildContactCard(context, _currentStudentProfile!),
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: _buildModernInfoCard(
+                context,
+                title: 'Academic Information',
+                icon: Icons.school,
+                children: [
+                  _buildStudentIdSection(studentProfile),
+                  _buildProfileInfoRow(
+                    Icons.format_list_numbered,
+                    'Roll Number',
+                    studentProfile.rollNumber?.toString(),
+                  ),
+                  _buildProfileInfoRow(
+                    Icons.class_,
+                    'Class ID',
+                    studentProfile.classId,
+                  ),
+                  _buildProfileInfoRow(
+                    Icons.group_work,
+                    'Section',
+                    studentProfile.section,
+                  ),
+                  _buildProfileInfoRow(
+                    Icons.calendar_today,
+                    'Session',
+                    studentProfile.session,
+                  ),
+                  _buildProfileInfoRow(
+                    Icons.check_circle_outline,
+                    'Status',
+                    studentProfile.status,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: _buildModernInfoCard(
+                context,
+                title: 'Personal Information',
+                icon: Icons.person,
+                children: [
+                  _buildProfileInfoRow(
+                    Icons.person_outline,
+                    'Full Name',
+                    studentProfile.fullName,
+                    isEditable: true,
+                    onChanged: (value) => setState(
+                      () => _currentStudentProfile = _currentStudentProfile?.copyWith(
+                        fullName: value,
+                      ),
+                    ),
+                  ),
+                  _buildProfileInfoRow(
+                    Icons.cake_outlined,
+                    'Date of Birth',
+                    studentProfile.dob,
+                    isEditable: true,
+                    onChanged: (value) => setState(
+                      () => _currentStudentProfile = _currentStudentProfile?.copyWith(
+                        dob: value,
+                      ),
+                    ),
+                  ),
+                  _buildProfileInfoRow(
+                    Icons.wc_outlined,
+                    'Gender',
+                    studentProfile.gender,
+                    isEditable: true,
+                    onChanged: (value) => setState(
+                      () => _currentStudentProfile = _currentStudentProfile?.copyWith(
+                        gender: value,
+                      ),
+                    ),
+                  ),
+                  _buildProfileInfoRow(
+                    Icons.bloodtype_outlined,
+                    'Blood Group',
+                    studentProfile.bloodGroup,
+                    isEditable: true,
+                    onChanged: (value) => setState(
+                      () => _currentStudentProfile = _currentStudentProfile?.copyWith(
+                        bloodGroup: value,
+                      ),
+                    ),
+                  ),
+                  _buildProfileInfoRow(
+                    Icons.school_outlined,
+                    'Admission Year',
+                    studentProfile.admissionYear,
+                    isEditable: true,
+                    onChanged: (value) => setState(
+                      () => _currentStudentProfile = _currentStudentProfile?.copyWith(
+                        admissionYear: value,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: _buildModernInfoCard(
+                context,
+                title: 'Contact Information',
+                icon: Icons.contact_mail,
+                children: [
+                  _buildProfileInfoRow(
+                    Icons.email_outlined,
+                    'Email',
+                    studentProfile.email,
+                    isEditable: true,
+                    onChanged: (value) => setState(
+                      () => _currentStudentProfile = _currentStudentProfile?.copyWith(
+                        email: value,
+                      ),
+                    ),
+                  ),
+                  _buildProfileInfoRow(
+                    Icons.phone_outlined,
+                    'Mobile No.',
+                    studentProfile.mob,
+                    isEditable: true,
+                    onChanged: (value) => setState(
+                      () => _currentStudentProfile = _currentStudentProfile?.copyWith(
+                        mob: value,
+                      ),
+                    ),
+                  ),
+                  _buildProfileInfoRow(
+                    Icons.location_on_outlined,
+                    'Present Address',
+                    studentProfile.presentAddress,
+                    isEditable: true,
+                    onChanged: (value) => setState(
+                      () => _currentStudentProfile = _currentStudentProfile?.copyWith(
+                        presentAddress: value,
+                      ),
+                    ),
+                  ),
+                  _buildProfileInfoRow(
+                    Icons.home_outlined,
+                    'Permanent Address',
+                    studentProfile.permanentAddress,
+                    isEditable: true,
+                    onChanged: (value) => setState(
+                      () => _currentStudentProfile = _currentStudentProfile?.copyWith(
+                        permanentAddress: value,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: _buildModernInfoCard(
+                context,
+                title: "Parent's Information",
+                icon: Icons.family_restroom,
+                children: [
+                  _buildProfileInfoRow(
+                    Icons.male,
+                    "Father's Name",
+                    studentProfile.fatherName,
+                    isEditable: true,
+                    onChanged: (value) => setState(
+                      () => _currentStudentProfile = _currentStudentProfile?.copyWith(
+                        fatherName: value,
+                      ),
+                    ),
+                  ),
+                  _buildProfileInfoRow(
+                    Icons.phone,
+                    "Father's Mobile",
+                    studentProfile.fatherMobile,
+                    isEditable: true,
+                    onChanged: (value) => setState(
+                      () => _currentStudentProfile = _currentStudentProfile?.copyWith(
+                        fatherMobile: value,
+                      ),
+                    ),
+                  ),
+                  _buildProfileInfoRow(
+                    Icons.female,
+                    "Mother's Name",
+                    studentProfile.motherName,
+                    isEditable: true,
+                    onChanged: (value) => setState(
+                      () => _currentStudentProfile = _currentStudentProfile?.copyWith(
+                        motherName: value,
+                      ),
+                    ),
+                  ),
+                  _buildProfileInfoRow(
+                    Icons.phone,
+                    "Mother's Mobile",
+                    studentProfile.motherMobile,
+                    isEditable: true,
+                    onChanged: (value) => setState(
+                      () => _currentStudentProfile = _currentStudentProfile?.copyWith(
+                        motherMobile: value,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
           _buildChangePasswordButton(),
           const SizedBox(height: 24),
@@ -436,306 +696,111 @@ class _StudentPanelState extends ConsumerState<StudentPanel> {
       backgroundImage = FileImage(_imageFile!);
     } else if (studentProfile.imageUrl != null &&
         studentProfile.imageUrl!.isNotEmpty) {
-      backgroundImage = NetworkImage(studentProfile.imageUrl!);
+      backgroundImage = CachedNetworkImageProvider(studentProfile.imageUrl!);
     }
 
-    return Column(
-      children: [
-        Stack(
-          children: [
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.grey.shade300,
-              backgroundImage: backgroundImage,
-              onBackgroundImageError: (exception, stackTrace) {
-                print('Error loading image: $exception');
-              },
-              child: backgroundImage == null
-                  ? const Icon(Icons.person, size: 50, color: Colors.grey)
-                  : null,
-            ),
-            if (_isEditingProfile)
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: GestureDetector(
-                  onTap: _pickImage,
-                  child: const CircleAvatar(
-                    radius: 15,
-                    backgroundColor: Colors.blue,
-                    child: Icon(
-                      Icons.edit,
-                      color: Colors.white,
-                      size: 18,
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.primary,
+            Theme.of(context).colorScheme.secondary,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Stack(
+            children: [
+              CircleAvatar(
+                radius: 60,
+                backgroundColor: Colors.white,
+                child: CircleAvatar(
+                  radius: 55,
+                  backgroundColor: Colors.grey.shade300,
+                  backgroundImage: backgroundImage,
+                  onBackgroundImageError: (exception, stackTrace) {
+                    print('Error loading image: $exception');
+                  },
+                  child: backgroundImage == null
+                      ? const Icon(Icons.person, size: 60, color: Colors.grey)
+                      : null,
+                ),
+              ),
+              if (_isEditingProfile)
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: _pickImage,
+                    child: const CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.blue,
+                      child: Icon(
+                        Icons.edit,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Text(
-          studentProfile.fullName,
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        Text(
-          studentProfile.email,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAcademicCard(BuildContext context, StudentTable studentProfile) {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Academic Information',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const Divider(height: 24),
-            _buildStudentIdSection(studentProfile),
-            _buildProfileInfoRow(
-              Icons.format_list_numbered,
-              'Roll Number',
-              studentProfile.rollNumber?.toString(),
-            ),
-            _buildProfileInfoRow(
-              Icons.class_,
-              'Class ID',
-              studentProfile.classId,
-            ),
-            _buildProfileInfoRow(
-              Icons.group_work,
-              'Section',
-              studentProfile.section,
-            ),
-            _buildProfileInfoRow(
-              Icons.calendar_today,
-              'Session',
-              studentProfile.session,
-            ),
-            _buildProfileInfoRow(
-              Icons.check_circle_outline,
-              'Status',
-              studentProfile.status,
-            ),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            studentProfile.fullName,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white),
+            textAlign: TextAlign.center,
+          ),
+          Text(
+            studentProfile.email,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildPersonalCard(BuildContext context, StudentTable studentProfile) {
+  Widget _buildModernInfoCard(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
     return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Personal Information',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const Divider(height: 24),
-            _buildProfileInfoRow(
-              Icons.person_outline,
-              'Full Name',
-              studentProfile.fullName,
-              isEditable: true,
-              onChanged: (value) => setState(
-                () => _currentStudentProfile = _currentStudentProfile?.copyWith(
-                  fullName: value,
-                ),
-              ),
-            ),
-            _buildProfileInfoRow(
-              Icons.cake_outlined,
-              'Date of Birth',
-              studentProfile.dob,
-              isEditable: true,
-              onChanged: (value) => setState(
-                () => _currentStudentProfile = _currentStudentProfile?.copyWith(
-                  dob: value,
-                ),
-              ),
-            ),
-            _buildProfileInfoRow(
-              Icons.wc_outlined,
-              'Gender',
-              studentProfile.gender,
-              isEditable: true,
-              onChanged: (value) => setState(
-                () => _currentStudentProfile = _currentStudentProfile?.copyWith(
-                  gender: value,
-                ),
-              ),
-            ),
-            _buildProfileInfoRow(
-              Icons.bloodtype_outlined,
-              'Blood Group',
-              studentProfile.bloodGroup,
-              isEditable: true,
-              onChanged: (value) => setState(
-                () => _currentStudentProfile = _currentStudentProfile?.copyWith(
-                  bloodGroup: value,
-                ),
-              ),
-            ),
-            _buildProfileInfoRow(
-              Icons.school_outlined,
-              'Admission Year',
-              studentProfile.admissionYear,
-              isEditable: true,
-              onChanged: (value) => setState(
-                () => _currentStudentProfile = _currentStudentProfile?.copyWith(
-                  admissionYear: value,
-                ),
-              ),
-            ),
-          ],
-        ),
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
       ),
-    );
-  }
-
-  Widget _buildContactCard(BuildContext context, StudentTable studentProfile) {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Contact Information',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const Divider(height: 24),
-            _buildProfileInfoRow(
-              Icons.email_outlined,
-              'Email',
-              studentProfile.email,
-              isEditable: true,
-              onChanged: (value) => setState(
-                () => _currentStudentProfile = _currentStudentProfile?.copyWith(
-                  email: value,
-                ),
-              ),
-            ),
-            _buildProfileInfoRow(
-              Icons.phone_outlined,
-              'Mobile No.',
-              studentProfile.mob,
-              isEditable: true,
-              onChanged: (value) => setState(
-                () => _currentStudentProfile = _currentStudentProfile?.copyWith(
-                  mob: value,
-                ),
-              ),
-            ),
-            _buildProfileInfoRow(
-              Icons.location_on_outlined,
-              'Present Address',
-              studentProfile.presentAddress,
-              isEditable: true,
-              onChanged: (value) => setState(
-                () => _currentStudentProfile = _currentStudentProfile?.copyWith(
-                  presentAddress: value,
-                ),
-              ),
-            ),
-            _buildProfileInfoRow(
-              Icons.home_outlined,
-              'Permanent Address',
-              studentProfile.permanentAddress,
-              isEditable: true,
-              onChanged: (value) => setState(
-                () => _currentStudentProfile = _currentStudentProfile?.copyWith(
-                  permanentAddress: value,
-                ),
-              ),
-            ),
-          ],
+      child: CustomPaint(
+        painter: CardPainter(
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
         ),
-      ),
-    );
-  }
-
-  Widget _buildParentInfoCard(
-    BuildContext context,
-    StudentTable studentProfile,
-  ) {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Parent's Information",
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const Divider(height: 24),
-            _buildProfileInfoRow(
-              Icons.male,
-              "Father's Name",
-              studentProfile.fatherName,
-              isEditable: true,
-              onChanged: (value) => setState(
-                () => _currentStudentProfile = _currentStudentProfile?.copyWith(
-                  fatherName: value,
-                ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, color: Theme.of(context).primaryColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ],
               ),
-            ),
-            _buildProfileInfoRow(
-              Icons.phone,
-              "Father's Mobile",
-              studentProfile.fatherMobile,
-              isEditable: true,
-              onChanged: (value) => setState(
-                () => _currentStudentProfile = _currentStudentProfile?.copyWith(
-                  fatherMobile: value,
-                ),
-              ),
-            ),
-            _buildProfileInfoRow(
-              Icons.female,
-              "Mother's Name",
-              studentProfile.motherName,
-              isEditable: true,
-              onChanged: (value) => setState(
-                () => _currentStudentProfile = _currentStudentProfile?.copyWith(
-                  motherName: value,
-                ),
-              ),
-            ),
-            _buildProfileInfoRow(
-              Icons.phone,
-              "Mother's Mobile",
-              studentProfile.motherMobile,
-              isEditable: true,
-              onChanged: (value) => setState(
-                () => _currentStudentProfile = _currentStudentProfile?.copyWith(
-                  motherMobile: value,
-                ),
-              ),
-            ),
-          ],
+              const Divider(height: 24),
+              ...children,
+            ],
+          ),
         ),
       ),
     );
@@ -813,5 +878,33 @@ class _StudentPanelState extends ConsumerState<StudentPanel> {
         ],
       ),
     );
+  }
+}
+
+class CardPainter extends CustomPainter {
+  final Color color;
+
+  CardPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path()
+      ..moveTo(0, size.height * 0.2)
+      ..quadraticBezierTo(size.width * 0.1, size.height * 0.1, size.width * 0.3, size.height * 0.2)
+      ..quadraticBezierTo(size.width * 0.6, size.height * 0.4, size.width, size.height * 0.1)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
   }
 }
